@@ -9,7 +9,7 @@ import Loading from '@/components/Loading'
 
 export default function Home() {
 
-  const [city, setCity] = useState('')
+  const [city, setCity] = useState('New york')
   const [weather, setWeather] = useState({})
   const [loading, setLoading] = useState(false)
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&appid=${process.env.NEXT_PUBLIC_WEATHER_KEY}`
