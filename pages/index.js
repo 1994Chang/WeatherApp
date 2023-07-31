@@ -1,29 +1,61 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import axios from 'axios'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {BsSearch} from 'react-icons/bs'
 import Weather from '@/components/Weather'
 import Loading from '@/components/Loading'
-
+import { fetchImagePlace } from './api/unsplashAPI'
+import { fetchPlaces } from './api/mapboxAPI'
 
 export default function Home() {
-
   const [city, setCity] = useState('')
   const [weather, setWeather] = useState({})
   const [loading, setLoading] = useState(false)
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=dubai&units=imperial&appid=${process.env.NEXT_PUBLIC_WEATHER_KEY}`
-  axios.get(url).then((response) => {
-    setWeather(response.data)
-  })
-  const fetchWeather = (e) => {
-    e.preventDefault()
-    setLoading(true)
+  const [imageData, setImageData] = useState(null);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+
+  const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&appid=${process.env.NEXT_PUBLIC_WEATHER_KEY}`
+ 
+  const fetchWeather = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     axios.get(url).then((response) => {
-      setWeather(response.data)
-    })
-    setLoading(false)
-  }
+      setWeather(response.data);
+      setLoading(false);
+      fetchImagePlace(city).then((imageData) => {
+        setImageData(imageData);
+      }).catch((error) => {
+        console.error(error);
+        setImageData(null);
+      });
+    }).catch((error) => {
+      console.error(error);
+      setLoading(false);
+    });
+  };
+  
+  const handleCityChange = async (event) => {
+    const city = event.target.value;
+    setCity(city); // Update the city state
+    try {
+      const suggestions = await fetchPlaces(city);
+      setSearchSuggestions(suggestions);
+    } catch (error) {
+      console.error(error);
+      setSearchSuggestions([]); // Set an empty array in case of an error
+    }
+  };
+  
+  const handleSuggestionClick = (suggestion) => {
+    console.log(suggestion,"suggestion data")
+    const cityName = suggestion.fullname.split(',')[0].trim();
+
+    setCity(cityName);
+    setSearchSuggestions([]); // Clear the search suggestions after selection
+  };
+  
+
   return (
     <>
       <Head>
@@ -34,17 +66,26 @@ export default function Home() {
       </Head>
 
         <div className='absolute top-0 left-0 right-0 bottom-0 z-[1] bg-black/60'></div>
-        <Image 
-          src='https://images.unsplash.com/photo-1561484930-998b6a7b22e8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8'
+       {imageData&& <Image 
+          src={imageData.urls.small}
           fill='true'
           alt='background'
           className='object-cover'>
 
-        </Image>
+        </Image>}
         <div className='relative flex justify-between items-center max-w-[500px] w-full m-auto pt-4 px-4 text-white z-10'>
           <form onSubmit={fetchWeather} className='relative flex justify-between items-center w-full m-auto p-3 bg-transparent border border-gray-300 text-white rounded-xl'>
             <div>
-              <input onChange={(e)=>setCity(e.target.value)} className='border-none bg-transparent text-white focus:outline-none w-full text-xl' type='text' placeholder='Search city'/>
+              <input value={city} onChange={handleCityChange}  className='border-none bg-transparent text-white focus:outline-none w-full text-xl' type='text' placeholder='Search city'/>
+              {searchSuggestions.length > 0 && (
+                <ul className="search-suggestions">
+                  {searchSuggestions.map((suggestion) => (
+                    <li key={suggestion.id} onClick={() => handleSuggestionClick(suggestion)}>
+                      {suggestion.fullname}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <button className='text-neutral-100' onClick={fetchWeather}><BsSearch className='font-semibold' size={20}></BsSearch></button>
           </form>
